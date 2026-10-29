@@ -1,0 +1,56 @@
+name: "FAP: Build"
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 5 * * 1" # weekly: catches SDK API changes early
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        sdk-channel: [release, dev]
+    name: "ufbt: ${{ matrix.sdk-channel }} SDK"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build with ufbt
+        uses: flipperdevices/flipperzero-ufbt-action@v0.1
+        id: build-app
+        with:
+          sdk-channel: ${{ matrix.sdk-channel }}
+
+      - name: Upload .fap
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.repository.name }}-${{ steps.build-app.outputs.suffix }}
+          path: ${{ steps.build-app.outputs.fap-artifacts }}
+          if-no-files-found: error
+
+  release:
+    # Push a tag like v1.0.0 to publish lettercade.fap as a GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build against release SDK
+        uses: flipperdevices/flipperzero-ufbt-action@v0.1
+        id: build-release
+        with:
+          sdk-channel: release
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FAPS: ${{ steps.build-release.outputs.fap-artifacts }}
+        run: gh release create "${{ github.ref_name }}" $FAPS --title "${{ github.ref_name }}" --generate-notes

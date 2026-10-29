@@ -1,0 +1,17 @@
+# ufbt build output and SDK/toolchain state
+dist/
+.ufbt/
+.vscode/
+.idea/
+
+# build artifacts
+*.fap
+*.elf
+*.o
+*.d
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*~
