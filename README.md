@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="screenshots/cover_preview_x8.png" alt="Lettercade cover: the robot mascot catching letters with a net" width="512">
+</p>
+
 # Lettercade (ASCII Arcade) for Flipper Zero
 
 Three letter games ported from the ESP32 clock: **Letters Rain**, **Snake Letters**, **Tennis Letters**.
@@ -5,6 +9,7 @@ Three letter games ported from the ESP32 clock: **Letters Rain**, **Snake Letter
 ## Build
 Copy this folder to `applications_user/lettercade` (firmware tree) or run `ufbt` inside it, then
 `ufbt launch`. The built app is `lettercade.fap` (Apps > Games > Lettercade).
+Every push is also built by GitHub Actions; download `lettercade.fap` from the run's artifacts.
 
 ## Controls
 - Rain / Tennis: Left/Right move the paddle (hold to keep moving)
@@ -23,4 +28,4 @@ commas or new lines. Used by the Words modes. Defaults: box, cat, dog, cactus, r
 
 ## Files
 `lettercade.c`, `application.fam`, `lettercade_10px.png` (app icon), `images/cover.png`
-(128x64 splash cover), `screenshots/` (x8 preview of the cover).
+(128x64 splash cover shown in the app), `screenshots/` (8x preview of the cover for this README).
