@@ -29,3 +29,7 @@ commas or new lines. Used by the Words modes. Defaults: box, cat, dog, cactus, r
 ## Files
 `lettercade.c`, `application.fam`, `lettercade_10px.png` (app icon), `images/cover.png`
 (128x64 splash cover shown in the app), `screenshots/` (8x preview of the cover for this README).
+
+## License
+
+MIT — do whatever you like with it.
