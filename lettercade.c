@@ -85,9 +85,17 @@ typedef struct {
     uint8_t snake_hw; /* top/bottom walls              (default off)   */
     uint8_t tn_size; /* size = idx + 1                (default 6)     */
     uint8_t tn_ball; /* index into BALL_MS            (default 500)   */
+    uint8_t vibe; /* 0 Always, 1 Basic, 2 Off      (default Always)*/
 } Settings;
 
-static const Settings DEFAULTS = {1, 2, 3, 3, 2, 3, 1, 0, 5, 2};
+static const Settings DEFAULTS = {1, 2, 3, 3, 2, 3, 1, 0, 5, 2, 0};
+
+/* v1.0 save layout (no vibration setting), still readable */
+typedef struct {
+    uint32_t magic;
+    uint8_t s[10];
+    uint16_t best[6];
+} SavedV1;
 
 typedef struct {
     uint32_t magic;
@@ -232,7 +240,7 @@ typedef struct {
     uint8_t game, mode;
     GState st;
     int32_t ending_ms;
-    bool end_ok, beat, won, dirty;
+    bool end_ok, beat, won, dirty, haptic, haptic_end;
     uint16_t score, best, prev_best;
     uint32_t fa, pa;
     uint32_t fall_ms, pad_ms; /* rain: fall / paddle;  tennis: ball / paddle;  snake: speed */
@@ -470,6 +478,7 @@ static void r_fall(Game* g) {
         bool caught = e.c >= g->px && e.c < g->px + g->size;
         bool is_t = (e.ch == tch);
         if(caught) {
+            g->haptic = true;
             if(is_t) {
                 r_ramp(g);
                 if(g->mode) {
@@ -755,6 +764,7 @@ static void t_ball(Game* g) {
             g->dy = -g->dy;
             ny = g->by + g->dy;
             bounced = true;
+            g->haptic = true;
             g->score++;
             if(g->mode) {
                 g->dx = t_deflect(g, nx);
@@ -863,6 +873,7 @@ static void game_tick(Game* g, uint32_t dt) {
         g->ending_ms -= (int32_t)dt;
         if(g->ending_ms <= 0) {
             g->st = StOver;
+            g->haptic_end = true;
             if(g->end_ok)
                 snd_play(N_OK, 4);
             else
@@ -1058,7 +1069,7 @@ static void game_draw(Canvas* canvas, void* model) {
 /* ------------------------------------------------------------------ */
 /* app                                                                 */
 /* ------------------------------------------------------------------ */
-typedef enum { OptNum, OptOnOff, OptMs } OptKind;
+typedef enum { OptNum, OptOnOff, OptMs, OptHaptic } OptKind;
 
 typedef struct App App;
 
@@ -1087,7 +1098,7 @@ struct App {
     View* game_view;
     Saved save;
     Words words;
-    Opt opts[10];
+    Opt opts[11];
     uint8_t cur_game;
     bool in_game;
     uint32_t last_tick;
@@ -1112,9 +1123,17 @@ static void save_load(App* app) {
     memset(app->save.best, 0, sizeof(app->save.best));
     File* f = storage_file_alloc(app->storage);
     if(storage_file_open(f, APP_DATA_PATH("lettercade.save"), FSAM_READ, FSOM_OPEN_EXISTING)) {
-        Saved tmp;
-        if(storage_file_read(f, &tmp, sizeof(Saved)) == sizeof(Saved) && tmp.magic == SAVE_MAGIC) {
-            app->save = tmp;
+        uint8_t raw[sizeof(Saved)];
+        size_t n = storage_file_read(f, raw, sizeof(raw));
+        uint32_t magic = 0;
+        if(n >= sizeof(magic)) memcpy(&magic, raw, sizeof(magic));
+        if(n == sizeof(Saved) && magic == SAVE_MAGIC) {
+            memcpy(&app->save, raw, sizeof(Saved));
+        } else if(n == sizeof(SavedV1) && magic == SAVE_MAGIC) {
+            SavedV1 old;
+            memcpy(&old, raw, sizeof(old));
+            memcpy(&app->save.s, old.s, sizeof(old.s)); /* vibe keeps its default */
+            memcpy(app->save.best, old.best, sizeof(old.best));
         }
     }
     storage_file_close(f);
@@ -1122,6 +1141,7 @@ static void save_load(App* app) {
     /* clamp everything so a damaged file can't crash the game */
     Settings* s = &app->save.s;
     s->sound = s->sound ? 1 : 0;
+    if(s->vibe > 2) s->vibe = DEFAULTS.vibe;
     if(s->rain_fall > 6) s->rain_fall = DEFAULTS.rain_fall;
     if(s->rain_paddle > 7) s->rain_paddle = DEFAULTS.rain_paddle;
     if(s->rain_decoys > 7) s->rain_decoys = DEFAULTS.rain_decoys;
@@ -1178,6 +1198,11 @@ static void opt_text(VariableItem* item, Opt* o, uint8_t idx) {
     case OptOnOff:
         snprintf(b, sizeof(b), "%s", idx ? "On" : "Off");
         break;
+    case OptHaptic: {
+        static const char* const H[3] = {"Always", "Basic", "Off"};
+        snprintf(b, sizeof(b), "%s", H[idx > 2 ? 2 : idx]);
+        break;
+    }
     default:
         snprintf(b, sizeof(b), "%u ms", o->table[idx]);
         break;
@@ -1210,7 +1235,7 @@ static void set_opt(App* a, uint8_t slot, uint8_t* val, uint8_t base, OptKind ki
 
 static void app_enter_cb(void* ctx, uint32_t index) {
     App* app = ctx;
-    if(index == 1) view_dispatcher_switch_to_view(app->vd, ViewReset);
+    if(index == 2) view_dispatcher_switch_to_view(app->vd, ViewReset);
 }
 
 static void build_settings(App* app) {
@@ -1225,6 +1250,7 @@ static void build_settings(App* app) {
     set_opt(app, 7, &s->tn_size, 1, OptNum, NULL);
     set_opt(app, 8, &s->tn_ball, 0, OptMs, BALL_MS);
     set_opt(app, 9, &s->sound, 0, OptOnOff, NULL);
+    set_opt(app, 10, &s->vibe, 0, OptHaptic, NULL);
 
     variable_item_list_reset(app->set_rain);
     add_opt(app->set_rain, "Fall speed", &app->opts[0], 7);
@@ -1243,6 +1269,7 @@ static void build_settings(App* app) {
 
     variable_item_list_reset(app->set_app);
     add_opt(app->set_app, "Sound", &app->opts[9], 2);
+    add_opt(app->set_app, "Vibration", &app->opts[10], 3);
     VariableItem* reset = variable_item_list_add(app->set_app, "Reset to defaults", 1, NULL, app);
     variable_item_set_current_value_text(reset, "OK");
     variable_item_list_set_enter_callback(app->set_app, app_enter_cb, app);
@@ -1468,13 +1495,21 @@ static void tick_cb(void* ctx) {
     snd_tick(dt);
     if(!app->in_game) return;
 
-    bool save = false;
+    bool save = false, buzz = false, buzz_end = false;
     with_view_model(
         app->game_view,
         GameModel * m,
         {
             Game* g = &m->g;
             game_tick(g, dt);
+            if(g->haptic) {
+                g->haptic = false;
+                buzz = true;
+            }
+            if(g->haptic_end) {
+                g->haptic_end = false;
+                buzz_end = true;
+            }
             if(g->dirty && g->st != StRun) {
                 app->save.best[g->game * 2 + g->mode] = g->best;
                 g->dirty = false;
@@ -1483,6 +1518,11 @@ static void tick_cb(void* ctx) {
         },
         true);
     if(save) save_write(app);
+    /* vibe: 0 Always (paddle contact + end of game), 1 Basic (end of game), 2 Off */
+    if(buzz_end && app->save.s.vibe <= 1)
+        notification_message(app->notif, &sequence_double_vibro);
+    else if(buzz && app->save.s.vibe == 0)
+        notification_message(app->notif, &sequence_single_vibro);
 }
 
 /* ----- about ----- */

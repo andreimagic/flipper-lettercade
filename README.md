@@ -31,14 +31,11 @@ Keep the bouncing letter ball in play by moving the paddle underneath it. Each s
 - **OK:** Pause or resume; after a game ends, start another round of the same mode.
 - **Back:** Pause during a game; from the pause or results screen, return to that game's menu.
 
-## Settings
-
-Settings are saved on the device. Each game's menu has its own options:
-
-- **Letters Rain:** fall speed, starting paddle size, and number of decoy letters.
-- **Snake Letters:** snake speed, number of distractions, and side and top/bottom walls.
+## Settings (saved on the device)
+- Letters Rain: fall speed, starting paddle size, decoy letters
+- Snake Letters:** snake speed, number of distractions, and side and top/bottom walls.
 - **Tennis Letters:** paddle size and ball speed.
-- **App:** sound on/off and reset to defaults. Resetting settings keeps saved scores.
+- **App:** sound on/off, vibration (Always = paddle contacts + end of game, Basic = end of game only, Off), Reset to defaults (scores are kept)
 
 ## Screenshots
 
@@ -47,7 +44,8 @@ Settings are saved on the device. Each game's menu has its own options:
 | ![Lettercade main menu](screenshots/ss1.png) | ![Letters Rain gameplay](screenshots/ss3.png) | ![Tennis Letters gameplay](screenshots/ss2.png) |
 
 ## Custom words
-Create `SD Card/apps_data/lettercade/words.txt` to customize the words used in the Words modes. Use up to 24 words, each 2-15 letters long, separated by spaces, commas, or new lines. Only letters A-Z are used. If the file is missing or contains no valid words, Lettercade uses: BOX, CAT, DOG, CACTUS, and RAINBOW.
+`SD Card/apps_data/lettercade/words.txt`: words (a-z, 2-15 letters, up to 24) separated by spaces,
+commas or new lines. Used by the Words modes. Defaults: box, cat, dog, cactus, rainbow.
 
 ## Files
 `lettercade.c`, `application.fam`, `lettercade_10px.png` (app icon), `images/cover.png`
