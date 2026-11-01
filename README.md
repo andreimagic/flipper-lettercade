@@ -1,7 +1,4 @@
-<p align="center">
-  <img src="screenshots/cover_preview_x8.png" alt="Lettercade cover: the robot mascot catching letters with a net" width="512">
-</p>
-
+![Lettercade cover: the robot mascot catching letters with a net](./screenshots/ss0.png)
 # Lettercade (ASCII Arcade) for Flipper Zero
 
 Lettercade is a collection of three quick, letter-themed arcade games for Flipper Zero: **Letters Rain**, **Snake Letters**, and **Tennis Letters**. Each game uses a compact ASCII-inspired playfield and has its own settings and saved scores.
